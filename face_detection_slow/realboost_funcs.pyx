@@ -43,6 +43,7 @@ def calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, weights, 
         bin_samples = samples[sample_count:sample_count+bin]
         sample_count += bin
         neg_bin_weights = 0
+        pos_bin_weights = 0
         for x in bin_samples:
             if x[1] == 1:
                 pos_bin_weights += x[2]
