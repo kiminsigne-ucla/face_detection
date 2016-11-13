@@ -19,11 +19,11 @@ def determine_threshold(feature, scores, weights):
     samples = list(chain(*weighted_scores))
     samples.sort()
 
-    cdef int pos_total, neg_total
+    cdef double pos_total, neg_total
     pos_total = len(weighted_scores[0])
     neg_total = len(weighted_scores[1])
 
-    cdef int pos_below_thres, neg_below_thresh, error
+    cdef double pos_below_thres, neg_below_thresh, error
     # establishing a threshold will split the sorted samples into two halves. We can try each partition, calculate how
     # many points are correctly classified, and choose the best threshold with the lowest error
     threshold_idx = None

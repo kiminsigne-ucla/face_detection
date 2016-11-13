@@ -56,6 +56,10 @@ def realboost(features, num_iterations, face_integral_imgs, nonface_integral_img
         # store tuple of bin boundaries and bin weights for selected feature, needed for final classifier
         feat_new.weight = feat_new_bin_info
 
+        # save progress for debugging
+        pickle.dump(weights[t+1], open('realboost_tmp_weights.pkl', 'wb'))
+        pickle.dump(boosted_features, open('real_boosted_features_tmp.pkl', 'wb'))
+
         # update feature thresholds based on new weights
         func = partial(adaboost.update_threshold, face_integral_imgs=face_integral_imgs,
                        nonface_integral_imgs=nonface_integral_imgs, weights=weights[t + 1])
