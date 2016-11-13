@@ -26,16 +26,13 @@ def detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=
     """
 
     hard_negatives = []
-    num_processes = 30
-    pool = multiprocessing.Pool(processes=num_processes)
-    func = partial(detect_faces_mini, image=image, classifier=classifier, negative_mining=negative_mining)
 
     # for multiple image scales
     scales = np.arange(min_scale, max_scale, step)
     if negative_mining:
-        face_boxes, hard_negatives = pool.map(func, scales)
+        face_boxes, hard_negatives = [detect_faces_mini(scale, image, classifier, negative_mining) for scale in scales]
     else:
-        face_boxes = pool.map(func, scales)
+        face_boxes = [detect_faces_mini(scale, image, classifier, negative_mining) for scale in scales]
 
     # flatten list of lists
     face_boxes = list(chain(*face_boxes))
@@ -49,33 +46,50 @@ def detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=
 
 def detect_faces_mini(scale, image, classifier, negative_mining=False):
 
-    face_boxes = []
-    hard_negatives = []
+    # face_boxes = []
+    # hard_negatives = []
 
     # scale image
     scaled_img = imresize(image, scale)
     # keep track of ratio between original width and new width
     ratio = image.shape[1] / float(scaled_img.shape[1])
-    for i in xrange(scaled_img.shape[0] - 16 + 1):
-        for j in xrange(scaled_img.shape[1] - 16 + 1):
-            window = scaled_img[i:i + 16, j:j + 16]
-            # calculate integral image and pad
-            window = np.pad(integral_image(window), pad_width=((1, 0), (1, 0)), mode='constant', constant_values=0)
-            response = run_classifier(window, classifier, classify=False)
-            if np.sign(response) == 1:
-                # store box boundaries, upper left corner and lower right corner
-                x1, y1 = int(i * ratio), int(j * ratio)
-                x2, y2 = int((i + 16) * ratio), int((j + 16) * ratio)
-                if negative_mining:
-                    face_boxes.append((x1, y1, x2, y2, ratio, scale))
-                    hard_negatives.append(scaled_img[i:i + 16, j:j + 16])
-                else:
-                    face_boxes.append((x1, y1, x2, y2, response))
 
+    num_processes = 2
+    pool = multiprocessing.Pool(processes=num_processes)
+
+    # grab window coordinates
+    window_coords = [[(i, j) for j in xrange(scaled_img.shape[1] - 16 + 1)] for i in xrange(scaled_img.shape[0] - 16 + 1)]
+    window_coords = list(chain(*window_coords))
+    func = partial(classify_window, scaled_img=scaled_img, classifier=classifier, ratio=ratio)
+    face_boxes = pool.map(func, window_coords)
+    # trim down None results
+    face_boxes = [x for x in face_boxes if x is not None]
     if negative_mining:
+        # grab images for hard negatives
+        hard_negatives = extract_imgs(face_boxes, scaled_img, ratio)
+        # calculate integral images
+        hard_negatives = np.pad(integral_image(hard_negatives), pad_width=((0,0), (1, 0), (1, 0)),
+                                mode='constant', constant_values=0)
         return face_boxes, hard_negatives
     else:
         return face_boxes
+
+
+def classify_window(window_coord, scaled_img, classifier, ratio):
+
+    i, j = window_coord
+    window = scaled_img[i:i + 16, j:j + 16]
+    # calculate integral image and pad
+    window = np.pad(integral_image(window), pad_width=((1, 0), (1, 0)), mode='constant', constant_values=0)
+
+    response = run_classifier(window, classifier, classify=False)
+    if np.sign(response) == 1:
+        # store box boundaries, upper left corner and lower right corner
+        x1, y1 = int(i * ratio), int(j * ratio)
+        x2, y2 = int((i + 16) * ratio), int((j + 16) * ratio)
+        return x1, y1, x2, y2, response
+    else:
+        return None
 
 
 def hard_negative_mining(images, classifier, weights, face_integral_imgs, nonface_integral_imgs,
@@ -122,23 +136,23 @@ def hard_negative_mining(images, classifier, weights, face_integral_imgs, nonfac
     return retrained
 
 
-def extract_imgs(boxes, image):
+def extract_imgs(boxes, scaled_image, ratio):
     """
     Return the image portions indicated by the box boundaries
-    :param boxes: List of tuples, each entry is (x1, y1, x2, y2, ratio) corresponding to upper left corner
-    and lower right corner and the ratio between the original image coordinates and the scaled coordinates so that we
-    can extract the proper 16x16 image
-    :param image: Image to extract sub-images
+    :param boxes: List of tuples, each entry is (x1, y1, x2, y2, response) corresponding to upper left corner
+    and lower right corner and the classifier response. Coordinates are relative to original image scale
+    :param scaled_image: Image to extract sub-images, must be at proper scale
+    :param ratio: ratio between the original image coordinates and the scaled coordinates so that we can extract the
+    proper 16x16 image
     :return: list of images within box coordinates
     """
 
     images = []
     for box in boxes:
-        x1, y1, x2, y2, ratio, scale = box
+        x1, y1, x2, y2, response = box
         scaled_x1, scaled_y1 = int(round(x1 / ratio)), int(round(y1 / ratio))
         scaled_x2, scaled_y2 = int(round(x2 / ratio)), int(round(y2 / ratio))
-        scaled_img = imresize(image, scale)
-        img = scaled_img[scaled_x1:scaled_x2, scaled_y1:scaled_y2]
+        img = scaled_image[scaled_x1:scaled_x2, scaled_y1:scaled_y2]
         images.append(img)
 
     return images
@@ -206,6 +220,7 @@ def graph_boxes_on_image(boxes, image, filename='boxed_faces.png'):
     """
 
     fig, ax = plt.subplots(1)
+    plt.axis('off')
 
     # display image
     ax.imshow(image)

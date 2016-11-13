@@ -45,7 +45,7 @@ def adaboost(features, num_iterations, face_integral_imgs, nonface_integral_imgs
         if round(error, 4) == 0.50:
             continue
         if error > 0.50:
-            feature.parity = -1*feature.parity
+            feature.parity *= -1
         h.append(feature)
 
     print "Number of classifiers with error != 50% :", len(h)
@@ -146,7 +146,6 @@ def update_threshold(feature, face_integral_imgs, nonface_integral_imgs, weights
     scores = [[feature.evaluate(img) for img in face_integral_imgs],
               [feature.evaluate(img) for img in nonface_integral_imgs]]
 
-    # updated_feature = face_haar.determine_threshold(feature, scores, weights)
     updated_feature = determine_threshold(feature, scores, weights)
 
     return updated_feature
