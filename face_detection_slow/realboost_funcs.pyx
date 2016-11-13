@@ -38,9 +38,10 @@ def calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     bin_weights = []
     bin_weights_total = []
 
-    for bin in hist[0]:  # contains index of bin boundaries
-        bin_samples = samples[:bin]
-        pos_bin_weights = 0
+    sample_count = 0
+    for bin in hist[0]:  # contains number of values in each bin
+        bin_samples = samples[sample_count:sample_count+bin]
+        sample_count += bin
         neg_bin_weights = 0
         for x in bin_samples:
             if x[1] == 1:
