@@ -21,7 +21,7 @@ def realboost(features, num_iterations, face_integral_imgs, nonface_integral_img
     :return: Real-boosted features
     """
 
-    num_processes = 2
+    num_processes = 4
 
     # reset each feature's weight/alpha field to 50, this attribute will now be number of bins used to approximate
     # classifier function
