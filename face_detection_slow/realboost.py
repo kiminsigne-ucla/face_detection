@@ -10,7 +10,7 @@ import seaborn as sns
 import time
 
 
-def realboost(features, num_iterations, face_integral_imgs, nonface_integral_imgs, weights=None):
+def realboost(features, num_iterations, face_integral_imgs, nonface_integral_imgs, weights=[]):
     """
 
     :param features: Weak features for boosting
@@ -29,7 +29,7 @@ def realboost(features, num_iterations, face_integral_imgs, nonface_integral_img
         x.weight = 64
 
     m = len(face_integral_imgs) + len(nonface_integral_imgs)
-    if not weights:
+    if len(weights) == 0:
         initial_weight = 1 / float(m)
         weights = [[np.array([initial_weight] * len(face_integral_imgs)),
                     np.array([initial_weight] * len(nonface_integral_imgs))]]
