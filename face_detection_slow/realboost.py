@@ -92,14 +92,18 @@ def update_weights(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     bin_boundaries, bin_weights = calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, weights,
                                                  total_weight=True)
 
-    func = partial(calculate_single_bin_score, feature=feature, bin_weights=bin_weights, bin_boundaries=bin_boundaries)
-    score_bin_weights = pool.map(func, face_integral_imgs)
+    # calculate weighted scores
+    weighted_scores = weights[0] * np.array([feature.evaluate(img) for img in face_integral_imgs])
+    # determine which bin each score falls within and grab appropriate weight
+    score_bin_weights = [bin_weights[np.digitize(x, bin_boundaries, right=True)] for x in weighted_scores]
     # multiple by -yi
     score_bin_weights = [-x for x in score_bin_weights]
     new_weights[0] = weights[0] * np.array(np.exp(score_bin_weights))
 
-    func = partial(calculate_single_bin_score, feature=feature, bin_weights=bin_weights, bin_boundaries=bin_boundaries)
-    score_bin_weights = pool.map(func, nonface_integral_imgs)
+    # calculate weighted scores
+    weighted_scores = weights[1] * np.array([feature.evaluate(img) for img in nonface_integral_imgs])
+    # determine which bin each score falls within and grab appropriate weight
+    score_bin_weights = [bin_weights[np.digitize(x, bin_boundaries, right=True)] for x in weighted_scores]
     # technically, multiply by -yi, -(-1)
     new_weights[1] = weights[1] * np.array(np.exp(score_bin_weights))
 
@@ -207,8 +211,7 @@ def roc_curve(classifier, num_features, face_integral_imgs, nonface_integral_img
     face_scores = [run_classifier(img, sub_classifier, classify=False) for img in face_integral_imgs]
     nonface_scores = [run_classifier(img, sub_classifier, classify=False) for img in nonface_integral_imgs]
 
-    # calculate final classification based on sum of all feature scores, convert each score to tuple and add 1 for
-    # positive samples and -1 for negative samples
+    # convert each score to tuple and add 1 for positive samples and -1 for negative samples
     face_final_scores = [(score, 1) for score in face_scores]
     nonface_final_scores = [(score, -1) for score in nonface_scores]
 
@@ -261,4 +264,3 @@ def roc_curve(classifier, num_features, face_integral_imgs, nonface_integral_img
     plt.ylabel('true positive rate')
 
     fig.savefig(filename)
-
