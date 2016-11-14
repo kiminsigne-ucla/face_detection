@@ -14,8 +14,9 @@ def calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     scores = [[feature.evaluate(img) for img in face_integral_imgs],
               [feature.evaluate(img) for img in nonface_integral_imgs]]
 
-    # weight each score, np arrays give element-wise multiplication
-    weighted_scores = [(np.array(scores[0]) * weights[0]), (np.array(scores[1]) * weights[1])]
+    # # weight each score, np arrays give element-wise multiplication
+    # weighted_scores = [(np.array(scores[0]) * weights[0]), (np.array(scores[1]) * weights[1])]
+    weighted_scores = scores
 
     # for each score, convert to tuple (score, 1, weight) for positive samples and
     # (score, -1, weight) for negative samples

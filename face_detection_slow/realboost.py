@@ -92,8 +92,9 @@ def update_weights(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     bin_boundaries, bin_weights = calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, weights,
                                                  total_weight=True)
 
-    # calculate weighted scores
-    weighted_scores = weights[0] * np.array([feature.evaluate(img) for img in face_integral_imgs])
+    # # calculate weighted scores
+    # weighted_scores = weights[0] * np.array([feature.evaluate(img) for img in face_integral_imgs])
+    weighted_scores = [feature.evaluate(img) for img in face_integral_imgs]
     # determine which bin each score falls within and grab appropriate weight
     score_bin_weights = [bin_weights[np.digitize(x, bin_boundaries, right=True)] for x in weighted_scores]
     # multiple by -yi
@@ -101,7 +102,8 @@ def update_weights(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     new_weights[0] = weights[0] * np.array(np.exp(score_bin_weights))
 
     # calculate weighted scores
-    weighted_scores = weights[1] * np.array([feature.evaluate(img) for img in nonface_integral_imgs])
+    # weighted_scores = weights[1] * np.array([feature.evaluate(img) for img in nonface_integral_imgs])
+    weighted_scores = [feature.evaluate(img) for img in nonface_integral_imgs]
     # determine which bin each score falls within and grab appropriate weight
     score_bin_weights = [bin_weights[np.digitize(x, bin_boundaries, right=True)] for x in weighted_scores]
     # technically, multiply by -yi, -(-1)
@@ -111,24 +113,24 @@ def update_weights(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     norm_factor = sum(new_weights[0]) + sum(new_weights[1])
     new_weights /= norm_factor
 
-    # get bin boundaries based on no weights, to be used in final classifier
-    emp_weights = [np.ones((1, len(face_integral_imgs)))[0], np.ones((1, len(nonface_integral_imgs)))[0]]
-    bin_boundaries, null = calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, emp_weights)
+    # # get bin boundaries based on no weights, to be used in final classifier
+    # emp_weights = [np.ones((1, len(face_integral_imgs)))[0], np.ones((1, len(nonface_integral_imgs)))[0]]
+    # bin_boundaries, null = calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, emp_weights)
 
     return new_weights, (bin_boundaries, bin_weights)
 
 
-def find_bin_index(bins, x):
-
-    if x <= bins[0]:
-        return 0
-
-    for i in range(1, len(bins)):
-        if bins[i-1] < x <= bins[i]:
-            return i
-
-    if x >= bins[-1]:
-        return len(bins) - 1
+# def find_bin_index(bins, x):
+#
+#     if x <= bins[0]:
+#         return 0
+#
+#     for i in range(1, len(bins)):
+#         if bins[i-1] < x <= bins[i]:
+#             return i
+#
+#     if x >= bins[-1]:
+#         return len(bins) - 1
 
 
 def determine_classifier_threshold(classifier, face_integral_imgs, nonface_integral_imgs):
