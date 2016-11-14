@@ -173,11 +173,17 @@ def determine_classifier_threshold(classifier, face_integral_imgs, nonface_integ
 def run_classifier(image, classifier, classify=False):
     # for each weak classifier, score the window and find which bin it falls in to give appropriate response/bin weight
     response = 0
-    # response = sum([x.weight[1][np.digitize(x.evaluate(image), x.weight[0], right=True)] for x in classifier])
-    for x in classifier:
+    # for x in classifier:
+    for i in range(len(classifier)):
+        x = classifier[i]
         score = x.evaluate(image)
         bin_boundaries, bin_weights = x.weight
-        response += bin_weights[np.digitize(score, bin_boundaries, right=True)]
+        bin_index = np.digitize(score, bin_boundaries, right=True)
+        if score > bin_boundaries[-1]:
+            # grab last bin weight
+            response += bin_weights[-1]
+        else:
+            response += bin_weights[bin_index]
     if classify:
         return np.sign(response)
     else:

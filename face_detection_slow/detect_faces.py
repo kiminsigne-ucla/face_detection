@@ -78,6 +78,7 @@ def detect_faces_mini(scale, image, classifier, negative_mining=False):
 def classify_window(window_coord, scaled_img, classifier, ratio):
 
     i, j = window_coord
+    print i, j
     window = scaled_img[i:i + 16, j:j + 16]
     # calculate integral image and pad
     window = np.pad(integral_image(window), pad_width=((1, 0), (1, 0)), mode='constant', constant_values=0)
