@@ -111,14 +111,11 @@ def update_weights(feature, face_integral_imgs, nonface_integral_imgs, weights, 
     norm_factor = sum(new_weights[0]) + sum(new_weights[1])
     new_weights /= norm_factor
 
+    # get bin boundaries based on no weights, to be used in final classifier
+    emp_weights = [np.ones((1, len(face_integral_imgs)))[0], np.ones((1, len(nonface_integral_imgs)))[0]]
+    bin_boundaries, null = calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, emp_weights)
+
     return new_weights, (bin_boundaries, bin_weights)
-
-
-def calculate_single_bin_score(img, feature, bin_weights, bin_boundaries):
-
-    score = feature.evaluate(img)
-    bin_index = find_bin_index(bin_boundaries, score)
-    return bin_weights[bin_index]
 
 
 def find_bin_index(bins, x):
@@ -174,11 +171,11 @@ def determine_classifier_threshold(classifier, face_integral_imgs, nonface_integ
 def run_classifier(image, classifier, classify=False):
     # for each weak classifier, score the window and find which bin it falls in to give appropriate response/bin weight
     response = 0
+    # response = sum([x.weight[1][np.digitize(x.evaluate(image), x.weight[0], right=True)] for x in classifier])
     for x in classifier:
         score = x.evaluate(image)
         bin_boundaries, bin_weights = x.weight
-        bin_index = find_bin_index(bin_boundaries, score)  # x.weight stores bin weights
-        response += bin_weights[bin_index]
+        response += bin_weights[np.digitize(score, bin_boundaries, right=True)]
     if classify:
         return np.sign(response)
     else:
