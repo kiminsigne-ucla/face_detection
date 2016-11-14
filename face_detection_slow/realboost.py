@@ -198,7 +198,7 @@ def graph_classifier_performance(classifier, num_features, face_integral_imgs, n
     plt.legend()
     plt.title('Strong classifier distribution at T = ' + str(num_features))
     plt.xlabel('score')
-    plt.ylabel('frequency')
+    plt.ylabel('density')
 
     fig.savefig(filename)
 
