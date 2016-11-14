@@ -1,5 +1,6 @@
 from functools import partial
 from realboost_funcs import calculate_bins, calculate_weighted_error
+from itertools import chain
 import numpy as np
 import multiprocessing
 import adaboost
@@ -51,7 +52,7 @@ def realboost(features, num_iterations, face_integral_imgs, nonface_integral_img
 
         # update weights for each data point
         new_weights, feat_new_bin_info = update_weights(feat_new, face_integral_imgs, nonface_integral_imgs,
-                                                           weights[t], pool)
+                                                        weights[t], pool)
         weights.append(new_weights)
         # store tuple of bin boundaries and bin weights for selected feature, needed for final classifier
         feat_new.weight = feat_new_bin_info
@@ -99,6 +100,7 @@ def update_weights(feature, face_integral_imgs, nonface_integral_imgs, weights, 
 
     func = partial(calculate_single_bin_score, feature=feature, bin_weights=bin_weights, bin_boundaries=bin_boundaries)
     score_bin_weights = pool.map(func, nonface_integral_imgs)
+    # technically, multiply by -yi, -(-1)
     new_weights[1] = weights[1] * np.array(np.exp(score_bin_weights))
 
     # go back through new weights and normalize
@@ -126,6 +128,43 @@ def find_bin_index(bins, x):
 
     if x >= bins[-1]:
         return len(bins) - 1
+
+
+def determine_classifier_threshold(classifier, face_integral_imgs, nonface_integral_imgs):
+
+    scores = [[run_classifier(img, classifier) for img in face_integral_imgs],
+              [run_classifier(img, classifier) for img in nonface_integral_imgs]]
+
+    scores[0] = [(scores[0][i], 1) for i in xrange(len(scores[0]))]
+    scores[1] = [(scores[1][i], -1) for i in xrange(len(scores[1]))]
+
+    samples = list(chain(*scores))
+    samples.sort()
+
+    pos_total = len(scores[0])
+    neg_total = len(scores[1])
+
+    # establishing a threshold will split the sorted samples into two halves. We can try each partition, calculate how
+    # many points are correctly classified, and choose the best threshold with the lowest error
+    threshold_idx = None
+    pos_below_thresh = 0
+    neg_below_thresh = 0
+    min_error = np.inf
+    for i in range(len(samples)):
+        if samples[i][1] == 1:
+            pos_below_thresh += samples[i][0]
+        else:
+            neg_below_thresh += samples[i][0]
+        error = min((pos_below_thresh + neg_total - neg_below_thresh),
+                    (neg_below_thresh + pos_total - pos_below_thresh))
+        if error < min_error:
+            threshold_idx = i
+            min_error = error
+
+    # find x value at threshold index
+    threshold = list(chain(*scores))[threshold_idx][0]
+
+    return threshold
 
 
 def run_classifier(image, classifier, classify=False):
@@ -222,3 +261,19 @@ def roc_curve(classifier, num_features, face_integral_imgs, nonface_integral_img
     plt.ylabel('true positive rate')
 
     fig.savefig(filename)
+
+
+def reduce_features(first, second):
+    # subtract feat2 from feat
+    reduced = []
+    for feat1 in first:
+        x = feat1.x
+        y = feat1.y
+        class_type = feat1.class_type
+        found = False
+        for feat2 in second:
+            if x == feat2.x and y == feat2.y and class_type == feat2.class_type:
+                found = True
+        if not found:
+            reduced.append(feat1)
+    return reduced
