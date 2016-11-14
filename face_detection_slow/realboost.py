@@ -21,7 +21,7 @@ def realboost(features, num_iterations, face_integral_imgs, nonface_integral_img
     :return: Real-boosted features
     """
 
-    num_processes = 4
+    num_processes = 30
 
     # reset each feature's weight/alpha field to 50, this attribute will now be number of bins used to approximate
     # classifier function
@@ -262,18 +262,3 @@ def roc_curve(classifier, num_features, face_integral_imgs, nonface_integral_img
 
     fig.savefig(filename)
 
-
-def reduce_features(first, second):
-    # subtract feat2 from feat
-    reduced = []
-    for feat1 in first:
-        x = feat1.x
-        y = feat1.y
-        class_type = feat1.class_type
-        found = False
-        for feat2 in second:
-            if x == feat2.x and y == feat2.y and class_type == feat2.class_type:
-                found = True
-        if not found:
-            reduced.append(feat1)
-    return reduced

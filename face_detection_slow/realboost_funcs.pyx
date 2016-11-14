@@ -51,19 +51,19 @@ def calculate_bins(feature, face_integral_imgs, nonface_integral_imgs, weights, 
                 neg_bin_weights += x[2]
         if pos_bin_weights == 0 and neg_bin_weights == 0:
             bin_weight = 0
-        else:
-            if pos_bin_weights == 0:
-                pos_bin_weights = pseudo_count
-            if neg_bin_weights == 0:
-                neg_bin_weights = pseudo_count
-        # # all negative samples, give low pseudo-count to positive
-        # elif pos_bin_weights == 0 and neg_bin_weights != 0:
-        #     bin_weight = 0.5 * log(pseudo_count / neg_bin_weights)
-        # # all positive samples, low pseudo-count to negatives
-        # elif pos_bin_weights != 0 and neg_bin_weights == 0:
-        #     bin_weight = 0.5 * log(pos_bin_weights / pseudo_count)
         # else:
-                bin_weight = 0.5 * log(pos_bin_weights / neg_bin_weights)
+        #     if pos_bin_weights == 0:
+        #         pos_bin_weights = pseudo_count
+        #     if neg_bin_weights == 0:
+        #         neg_bin_weights = pseudo_count
+        # all negative samples, give low pseudo-count to positive
+        elif pos_bin_weights == 0 and neg_bin_weights != 0:
+            bin_weight = 0.5 * log(pseudo_count / neg_bin_weights)
+        # all positive samples, low pseudo-count to negatives
+        elif pos_bin_weights != 0 and neg_bin_weights == 0:
+            bin_weight = 0.5 * log(pos_bin_weights / pseudo_count)
+        else:
+            bin_weight = 0.5 * log(pos_bin_weights / neg_bin_weights)
 
         bin_weights_total.append(bin_weight)
         bin_weights.append((pos_bin_weights, neg_bin_weights))
