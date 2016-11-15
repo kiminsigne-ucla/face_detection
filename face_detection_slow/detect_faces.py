@@ -173,7 +173,7 @@ def nonmax_suppression(boxes, threshold):
         return selected_boxes
 
     # sort boxes by bottom right corner, with bottom-most corner first
-    boxes_sorted = sorted(boxes, key=lambda x: (x[2], x[3]), reverse=True)
+    boxes_sorted = sorted(boxes, key=lambda x: (x[3], x[2]), reverse=True)
     # areas = [(box[2] - box[0] + 1) * (box[3] - box[1] + 1) for box in boxes_sorted]
 
     while len(boxes_sorted) > 0:
