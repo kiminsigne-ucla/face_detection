@@ -8,7 +8,7 @@ import multiprocessing
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-
+import pickle
 
 def detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=False):
     """
@@ -67,9 +67,6 @@ def detect_faces_mini(scale, image, classifier, negative_mining=False):
     if negative_mining:
         # grab images for hard negatives
         hard_negatives = extract_imgs(face_boxes, scaled_img, ratio)
-        # calculate integral images
-        hard_negatives = np.pad(integral_image(hard_negatives), pad_width=((0,0), (1, 0), (1, 0)),
-                                mode='constant', constant_values=0)
         return face_boxes, hard_negatives
     else:
         return face_boxes
@@ -115,6 +112,8 @@ def hard_negative_mining(images, classifier, weights, face_integral_imgs, nonfac
 
     neg_boxes, neg_images = [detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=True)
                              for image in images]
+    pickle.dump(neg_boxes, open('neg_boxes.pkl', 'wb'))
+
     # neg_images = [extract_imgs(neg_boxes[i], images[i]) for i in range(len(images))]
     # flatten and convert to integral images
     hard_neg_integral_imgs = calculate_integral_imgs(chain(*neg_images))
