@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pickle
 
+
 def detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=False):
     """
     Use sliding window, at different scales, to detect face images
@@ -30,7 +31,10 @@ def detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=
     # for multiple image scales
     scales = np.arange(min_scale, max_scale, step)
     if negative_mining:
-        face_boxes, hard_negatives = [detect_faces_mini(scale, image, classifier, negative_mining) for scale in scales]
+        # returns face_boxes and hard_negative images
+        info = [detect_faces_mini(scale, image, classifier, negative_mining) for scale in scales]
+        face_boxes = [x[0] for x in info]
+        hard_negatives = [x[1] for x in info]
     else:
         face_boxes = [detect_faces_mini(scale, image, classifier, negative_mining) for scale in scales]
 
