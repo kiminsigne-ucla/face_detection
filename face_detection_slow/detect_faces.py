@@ -161,6 +161,58 @@ def extract_imgs(boxes, scaled_image, ratio):
     return images
 
 
+# def nonmax_suppression(boxes, threshold):
+#     """
+#     If detected boxes overlap by more than threshold, choose box with highest score
+#     :param boxes: List of box coordinates, (x1, y1, x2, y2, response) where x1, y1 are upper left corner and x2, y2
+#     are lower-right corner, response is classifier score for that box (scale-dependent)
+#     :param threshold: Overlap threshold
+#     :return: Reduced set of non-overlapping boxes
+#     """
+#
+#     selected_boxes = []
+#
+#     if len(boxes) == 0:
+#         return selected_boxes
+#
+#     # sort boxes by bottom right corner, with bottom-most corner first
+#     boxes_sorted = sorted(boxes, key=lambda x: (x[3], x[2]), reverse=True)
+#     # areas = [(box[2] - box[0] + 1) * (box[3] - box[1] + 1) for box in boxes_sorted]
+#
+#     while len(boxes_sorted) > 0:
+#         # starting with box in bottom-most right corner, first element of sorted list
+#         curr_box = boxes_sorted.pop(0)
+#         # initialize list of suppressed boxes
+#         suppress = [curr_box]
+#         # grab boxes that are within current box, lower-right corner >= top-left corner of current box
+#         within = []
+#         curr_x1, curr_y1 = curr_box[:2]
+#         for box in boxes_sorted:
+#             if box[2] > curr_x1 and box[3] > curr_y1:
+#                 within.append(box)
+#             if box[2] <= curr_x1 and box[3] <= curr_y1:
+#                 break
+#
+#         # calculate area overlap between current box and boxes within region
+#         curr_area = (curr_box[2] - curr_box[0] + 1) * (curr_box[3] - curr_box[1] + 1)
+#         areas = [(box[2] - box[0] + 1) * (box[3] - box[1] + 1) for box in within]
+#         overlaps = [float(curr_area) / float(area) for area in areas]
+#         # if over threshold, suppress all but one
+#         above_threshold = [within[i] for i in range(len(within)) if overlaps[i] >= threshold]
+#         if len(above_threshold) > 0:
+#             # choose box with highest score, score stored in last element of tuple
+#             max_value, max_index = max(((val, idx) for (idx, val) in enumerate(above_threshold)), key=lambda x:x[0][-1])
+#             selected_boxes.append(above_threshold[max_index])
+#             # suppress all images within current box that are above overlap threshold
+#             suppress.extend(above_threshold)
+#             # remove suppressed images from sorted boxes
+#             boxes_sorted = [box for box in boxes_sorted if box not in suppress]
+#         else:
+#             selected_boxes.append(curr_box)
+#
+#     return selected_boxes
+
+
 def nonmax_suppression(boxes, threshold):
     """
     If detected boxes overlap by more than threshold, choose box with highest score
@@ -176,7 +228,7 @@ def nonmax_suppression(boxes, threshold):
         return selected_boxes
 
     # sort boxes by bottom right corner, with bottom-most corner first
-    boxes_sorted = sorted(boxes, key=lambda x: (x[3], x[2]), reverse=True)
+    boxes_sorted = sorted(boxes, key=lambda x: (x[2], x[3]), reverse=True)
     # areas = [(box[2] - box[0] + 1) * (box[3] - box[1] + 1) for box in boxes_sorted]
 
     while len(boxes_sorted) > 0:
@@ -186,31 +238,61 @@ def nonmax_suppression(boxes, threshold):
         suppress = [curr_box]
         # grab boxes that are within current box, lower-right corner >= top-left corner of current box
         within = []
-        curr_x1, curr_y1 = curr_box[:2]
         for box in boxes_sorted:
-            if box[2] > curr_x1 and box[3] > curr_y1:
+            # grab coordinates, everything except last element which is the response
+            if box_overlap(curr_box[:-1], box[:-1]):
                 within.append(box)
-            if box[2] <= curr_x1 and box[3] <= curr_y1:
+            if box[2] <= curr_box[0] and box[3] <= curr_box[1]:
                 break
 
-        # calculate area overlap between current box and boxes within region
-        curr_area = (curr_box[2] - curr_box[0] + 1) * (curr_box[3] - curr_box[1] + 1)
-        areas = [(box[2] - box[0] + 1) * (box[3] - box[1] + 1) for box in within]
-        overlaps = [float(curr_area) / float(area) for area in areas]
-        # if over threshold, suppress all but one
-        above_threshold = [within[i] for i in range(len(within)) if overlaps[i] >= threshold]
-        if len(above_threshold) > 0:
-            # choose box with highest score, score stored in last element of tuple
-            max_value, max_index = max(((val, idx) for (idx, val) in enumerate(above_threshold)), key=lambda x:x[0][-1])
-            selected_boxes.append(above_threshold[max_index])
-            # suppress all images within current box that are above overlap threshold
-            suppress.extend(above_threshold)
-            # remove suppressed images from sorted boxes
-            boxes_sorted = [box for box in boxes_sorted if box not in suppress]
+        if len(within) > 0:
+            # calculate area overlap between current box and boxes within region
+            curr_area = (curr_box[2] - curr_box[0] + 1) * (curr_box[3] - curr_box[1] + 1)
+            areas = [(box[2] - box[0] + 1) * (box[3] - box[1] + 1) for box in within]
+            overlaps = [float(area) / float(curr_area) for area in areas]
+            # if over threshold, suppress all but one
+            above_threshold = [within[i] for i in range(len(within)) if overlaps[i] >= threshold]
+            if len(above_threshold) > 0:
+                # choose box with highest score, score stored in last element of tuple
+                max_value, max_index = max(((val, idx) for (idx, val) in enumerate(above_threshold)), key=lambda x:x[0][-1])
+                selected_boxes.append(above_threshold[max_index])
+                # suppress all images within current box that are above overlap threshold
+                suppress.extend(above_threshold)
+                # remove suppressed images from sorted boxes
+                boxes_sorted = [box for box in boxes_sorted if box not in suppress]
+            else:
+                # none of the boxes overlapped enough, so keep everything
+                selected_boxes.append(curr_box)
+                selected_boxes.extend(within)
         else:
             selected_boxes.append(curr_box)
 
     return selected_boxes
+
+
+def box_overlap(box1_coords, box2_coords):
+    # check for left overlap, box2 overlaps on the left half of box1
+    # and check for right overlap, box2 overlaps with right half of box1
+    box1_upperleft_x, box1_upperleft_y, box1_lowerright_x, box1_lowerright_y = box1_coords
+    box2_upperleft_x, box2_upperleft_y, box2_lowerright_x, box2_lowerright_y = box2_coords
+
+    # get coordinates for other corners
+    box1_upperright_x, box1_upperright_y = box1_upperleft_x, box1_lowerright_y
+    box1_lowerleft_x, box1_lowerleft_y = box1_lowerright_x, box1_upperleft_y
+
+    # box2_upperright_x, box2_upperright_y = box2_upperleft_x, box2_lowerright_y
+    box2_lowerleft_x, box2_lowerleft_y = box2_lowerright_x, box2_upperleft_y
+
+    # check if lower right corner of box 2 is within box 1
+    if (box1_lowerright_x >= box2_lowerright_x >= box1_upperleft_x) and \
+            (box1_lowerright_y >= box2_lowerright_y >= box1_upperleft_y):
+        return True
+    # check if lower left corner of box 2 is within box 1
+    elif (box1_lowerleft_x >= box2_lowerleft_x >= box1_upperright_x) and \
+            (box1_lowerleft_y <= box2_lowerleft_y <= box1_upperright_y):
+        return True
+    else:
+        return False
 
 
 def graph_boxes_on_image(boxes, image, filename='boxed_faces.png'):
@@ -222,7 +304,7 @@ def graph_boxes_on_image(boxes, image, filename='boxed_faces.png'):
     :return: None, saves plot
     """
 
-    fig= plt.figure(figsize=(14, 8), dpi=1000)
+    fig = plt.figure(figsize=(14, 8), dpi=1000)
     ax = fig.add_subplot(111)
     plt.axis('off')
 
@@ -234,3 +316,20 @@ def graph_boxes_on_image(boxes, image, filename='boxed_faces.png'):
     for rect in [patches.Rectangle((box[1], box[0]), width=box[3] - box[1], height=box[2] - box[0],
                                    linewidth=1, edgecolor='r', facecolor='none') for box in boxes]: ax.add_patch(rect)
     fig.savefig(filename)
+
+
+def nonmax_suppression_iterative(boxes, threshold):
+    # keep calling nonmax suppression until the number of faces is the same
+    reduced = nonmax_suppression(boxes, threshold)
+    previous = len(reduced)
+    current = 0
+    while previous != current:
+        print previous, current
+        previous = len(reduced)
+        further_reduced = nonmax_suppression(reduced, threshold)
+        current = len(further_reduced)
+        reduced = further_reduced
+        if next == 0:
+            break
+
+    return further_reduced
