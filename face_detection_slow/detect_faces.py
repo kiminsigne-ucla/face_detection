@@ -116,7 +116,7 @@ def hard_negative_mining(images, classifier, weights, face_integral_imgs, nonfac
 
     neg_info = [detect_faces(image, classifier, min_scale, max_scale, step, negative_mining=True)
                              for image in images]
-    pickle.dump(neg_boxes, open('neg_info.pkl', 'wb'))
+    pickle.dump(neg_info, open('neg_info.pkl', 'wb'))
 
     neg_boxes = [x[0] for x in neg_info]
     neg_images = [x[1] for x in neg_info]
