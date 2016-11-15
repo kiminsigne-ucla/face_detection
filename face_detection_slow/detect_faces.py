@@ -196,9 +196,9 @@ def nonmax_suppression(boxes, threshold):
         overlaps = [float(curr_area) / float(area) for area in areas]
         # if over threshold, suppress all but one
         above_threshold = [within[i] for i in range(len(within)) if overlaps[i] >= threshold]
-        if len(above_threshold) >= 0:
+        if len(above_threshold) > 0:
             # choose box with highest score, score stored in last element of tuple
-            max_index, max_value = max(enumerate(above_threshold), key=lambda x: x[-1])
+            max_value, max_index = max(((val, idx) for (idx, val) in enumerate(above_threshold)), key=lambda x:x[0][-1])
             selected_boxes.append(above_threshold[max_index])
             # suppress all images within current box that are above overlap threshold
             suppress.extend(above_threshold)
@@ -219,13 +219,15 @@ def graph_boxes_on_image(boxes, image, filename='boxed_faces.png'):
     :return: None, saves plot
     """
 
-    fig, ax = plt.subplots(1)
+    fig= plt.figure(figsize=(14, 8), dpi=1000)
+    ax = fig.add_subplot(111)
     plt.axis('off')
 
     # display image
     ax.imshow(image)
 
     # Create a Rectangle patch, first argument (x,y) which is upper-left corner, followed by width, height
-    for rect in [patches.Rectangle((box[0], box[1]), width=box[3] - box[1], height=box[2] - box[0],
+    # matrix coordinates are opposite of image axes
+    for rect in [patches.Rectangle((box[1], box[0]), width=box[3] - box[1], height=box[2] - box[0],
                                    linewidth=1, edgecolor='r', facecolor='none') for box in boxes]: ax.add_patch(rect)
     fig.savefig(filename)
